@@ -43,6 +43,27 @@ void flow () // Interrupt function
    f1.Sample();
 }
 
+void transitToState(int futureState)
+{
+
+  if (sys.GetState() == futureState)
+  {
+    // state won't change, we don't do anything
+    return;
+  }
+  else if (sys.GetState() == System::PUMPING)
+  {
+    //we have to stop pumping
+    v1.ForceStop();
+  }
+  else if (futureState == System::PUMPING)
+  {
+    v1.TurnOnFor(TIME_T);
+  }
+  sys.SetState(futureState);
+
+}
+
 void setup()
 {
 	Serial.begin(9600);
@@ -55,11 +76,11 @@ void setup()
 
 void loop()
 {
-	// prepare inputs for reading
+	// ******* 1. prepare inputs for reading *******
 	sensors.requestTemperatures();
 	f1.Update();
 
-	// read values from sensors
+	// ******* 2. read values from sensors *******
 	float tempC = sensors.getTempC(Probe01);
 	int flowRate = f1.GetFlowRate();
 	Serial.print("T1=");
@@ -68,30 +89,23 @@ void loop()
 	Serial.print(flowRate);
 	Serial.println("L/h");
 
-	// process the sensor values and act accordingly
+	// ******* 3. process the sensor values and act accordingly *******
 	if (flowRate > 0)
 	{
-		// CONSUME mode has a higher priority and must therefore be handled first
-		if (sys.GetState() == System::PUMPING)
-		{
-			v1.ForceStop(); // we need to stop what we are doing right now
-		}
-		sys.SetState(System::CONSUME);
+		// State::CONSUME mode has a higher priority and must therefore be handled first
+		transitToState(System::CONSUME);
 	}
 	else
 	{
 		if (tempC > 28)
 		{
-			sys.SetState(System::PUMPING);
-			v1.SetStateFor(HIGH, TIME_T);
+      //temperature difference is high than threshold, we initiate pumping
+			transitToState(System::PUMPING);
 		}
 		else
 		{
-			if (sys.GetState() == System::PUMPING)
-			{
-				v1.ForceStop(); // we need to stop what we are doing right now
-			}
-			sys.SetState(System::IDLE);
+			transitToState(System::READY);
+			sys.SetState(System::READY);
 		}
 	}
 

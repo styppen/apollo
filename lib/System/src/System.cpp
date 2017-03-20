@@ -30,7 +30,7 @@ void System::SetState(int state)
   {
     digitalWrite(_offPin, HIGH);
   }
-  else if(_systemState == System::IDLE)
+  else if(_systemState == System::READY)
   {
     digitalWrite(_idlePin, HIGH);
   }

@@ -20,7 +20,7 @@ class System
 
     // system state constants
     static const int OFF = 0;
-    static const int IDLE = 1;
+    static const int READY = 1;
     static const int PUMPING = 2;
     static const int CONSUME = 3;
 

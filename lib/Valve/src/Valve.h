@@ -19,7 +19,7 @@ class Valve
 
     // member functions
     void Update();
-    void SetStateFor(int state, long period);
+    void TurnOnFor(long period);
     void Toggle();
     void ForceStop();
 

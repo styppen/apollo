@@ -42,18 +42,15 @@ void Valve::Update()
   }
 }
 
-void Valve::SetStateFor(int state, long period)
+void Valve::TurnOnFor(long period)
 {
   if (_actionState != Valve::STATE_ACTIVE)
   {
-    if(state == ON || state == OFF)
-    {
-      _valveState = state;
-      digitalWrite(_valvePin, _valveState);
-      _actionState = Valve::STATE_ACTIVE;
-      _OnTime = period * 1000; // convert to milliseconds
-      _previousMillis = millis();
-    }
+    _valveState = ON;
+    digitalWrite(_valvePin, HIGH);
+    _actionState = Valve::STATE_ACTIVE;
+    _OnTime = period * 1000; // convert to milliseconds
+    _previousMillis = millis();
   }
 }
 
