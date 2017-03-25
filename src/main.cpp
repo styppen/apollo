@@ -33,6 +33,7 @@ Valve v1(pinV1);
 System sys(pinStateOff, pinStateIdle, pinStatePumping, pinStateConsume);
 Flow f1(pinF1, pinStateF1);
 
+DeviceAddress Probe01 = { 0x28, 0xFF, 0x99, 0xC7, 0x64, 0x15, 0x02, 0x27 };
 DeviceAddress Probe05 = { 0x28, 0xFF, 0xD2, 0xAC, 0x64, 0x15, 0x01, 0x58 };
 DeviceAddress Probe04 = { 0x28, 0xFF, 0x22, 0xD0, 0x64, 0x15, 0x01, 0x44 };
 
@@ -69,6 +70,7 @@ void setup()
 {
 	Serial.begin(9600);
 	sensors.begin();
+  sensors.setResolution(Probe01, 10);
 	sensors.setResolution(Probe05, 10);
   sensors.setResolution(Probe04, 10);
 
@@ -85,11 +87,14 @@ void loop()
 	// ******* 2. read values from sensors *******
 	float temp1 = sensors.getTempC(Probe05);
   float temp2 = sensors.getTempC(Probe04);
+  float temp3 = sensors.getTempC(Probe01);
 	int flowRate = f1.GetFlowRate();
 	Serial.print("T1=");
 	Serial.print(temp1);
   Serial.print("C, T2=");
   Serial.print(temp2);
+  Serial.print("C, T3=");
+  Serial.print(temp3);
 	Serial.print("C, flowRate=");
 	Serial.print(flowRate);
 	Serial.println("L/h");
