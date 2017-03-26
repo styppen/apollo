@@ -1,5 +1,5 @@
 /*
- * Valve.h - Library for handling solenoid valves
+ * Valve.cpp - Library for handling solenoid valves
  * Create by Styppen, March 2017
  */
 
@@ -9,71 +9,59 @@
 #define OFF HIGH
 #define ON LOW
 
-Valve::Valve(int pin)
+Valve::Valve(int pin, int valveType)
 {
   pinMode(pin, OUTPUT);
   _valvePin = pin;
+  _valveType = valveType;
+  Init();
+}
 
-	_valveState = OFF;
+void Valve::Init()
+{
+  if (_valveType == Valve::TYPE_NC)
+  {
+    _open = LOW;
+    _closed = HIGH;
+  }
+  else if (_valveType == Valve::TYPE_NO)
+  {
+    _open = HIGH;
+    _closed = LOW;
+  }
+
+  // we want to init the valve default state
+  _valveState = _valveType == Valve::TYPE_NC ? _closed : _open;
   _actionState = Valve::STATE_IDLE;
 	_previousMillis = 0;
-  digitalWrite(_valvePin, OFF);
+  digitalWrite(_valvePin, _valveState);
 }
 
-void Valve::Update()
+void Valve::Open()
 {
-  // check to see if it's time to change the state of the LED
-  unsigned long currentMillis = millis();
-  if ((currentMillis - _previousMillis) >= _OnTime)
-  {
-    if (_actionState == Valve::STATE_FORCESTOP)
-    {
-      digitalWrite(_valvePin, OFF);
-      _actionState = Valve::STATE_IDLE;
-    }
-    else
-    {
-      if (_actionState == Valve::STATE_ACTIVE)
-      {
-        // time is up, time to change state
-        Toggle();
-        _actionState = Valve::STATE_IDLE;
-      }
-    }
-  }
+  _valveState = _open;
+  digitalWrite(_valvePin, _valveState);
+  _actionState = Valve::STATE_ACTIVE;
 }
 
-void Valve::TurnOnFor(long period)
+void Valve::Close()
 {
-  if (_actionState != Valve::STATE_ACTIVE)
-  {
-    _valveState = ON;
-    digitalWrite(_valvePin, ON);
-    _actionState = Valve::STATE_ACTIVE;
-    _OnTime = period * 1000; // convert to milliseconds
-    _previousMillis = millis();
-  }
+  _valveState = _closed;
+  digitalWrite(_valvePin, _valveState);
+  _actionState = Valve::STATE_IDLE;
+
 }
 
-void Valve::TurnOff()
+void Valve::Engage()
 {
-  if (_actionState == Valve::STATE_ACTIVE)
-  {
-    _valveState = OFF;
-    digitalWrite(_valvePin, OFF);
-    _actionState = Valve::STATE_IDLE;
-  }
+  _valveState = LOW;
+  _actionState = Valve::STATE_ACTIVE;
+  digitalWrite(_valvePin, _valveState);
 }
 
-void Valve::ForceStop()
+void Valve::Disengage()
 {
-  _valveState = OFF;
-  _actionState = Valve::STATE_FORCESTOP;
-  _previousMillis = 0;
-}
-
-void Valve::Toggle()
-{
-  _valveState = _valveState == ON ? OFF : ON;
+  _valveState = HIGH;
+  _actionState = Valve::STATE_IDLE;
   digitalWrite(_valvePin, _valveState);
 }

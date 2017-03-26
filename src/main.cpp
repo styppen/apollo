@@ -4,6 +4,7 @@
 #include <Valve.h>
 #include <System.h>
 #include <Flow.h>
+#include <Pump.h>
 
 // threshold temperatures
 #define TEMP_X 3
@@ -15,8 +16,11 @@
 #define ONE_WIRE_BUS 3
 
 // device configuration
-const int pinV1 = 5;
 const int pinF1 = 2;
+const int pinV1 = 5;
+const int pinV2 = 6;
+const int pinV3 = 7;
+const int pinP1 = 8;
 
 // device state led configuration
 const int pinStateV1 = 5;
@@ -29,9 +33,18 @@ const int pinStatePumping = 12;
 const int pinStateConsume = 13;
 
 // valve control objects
-Valve v1(pinV1);
+Valve v1(pinV1, Valve::TYPE_NO);
+Valve v2(pinV2, Valve::TYPE_NO);
+Valve v3(pinV3, Valve::TYPE_NC);
+
+// system control object
 System sys(pinStateOff, pinStateIdle, pinStatePumping, pinStateConsume);
+
+// flow control object
 Flow f1(pinF1, pinStateF1);
+
+// pump control object
+Pump p1(pinP1);
 
 DeviceAddress Probe01 = { 0x28, 0xFF, 0x99, 0xC7, 0x64, 0x15, 0x02, 0x27 };
 DeviceAddress Probe05 = { 0x28, 0xFF, 0xD2, 0xAC, 0x64, 0x15, 0x01, 0x58 };
@@ -56,11 +69,10 @@ void transitToState(int futureState)
   else if (sys.GetState() == System::PUMPING)
   {
     //we have to stop pumping
-    v1.ForceStop();
   }
   else if (futureState == System::PUMPING)
   {
-    v1.TurnOnFor(TIME_T);
+    // start the pumping routine
   }
   sys.SetState(futureState);
 
@@ -119,5 +131,5 @@ void loop()
 		}
 	}
 
-	v1.Update();
+  p1.Update();
 }
