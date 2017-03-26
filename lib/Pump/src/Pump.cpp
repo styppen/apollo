@@ -27,12 +27,9 @@ void Pump::Init()
 
 void Pump::Enable()
 {
-  if (_actionState == Pump::STATE_IDLE)
-  {
-    _pumpState = ON;
-    digitalWrite(_pumpPin, _pumpState);
-    _actionState = Pump::STATE_ACTIVE;
-  }
+  _pumpState = ON;
+  digitalWrite(_pumpPin, _pumpState);
+  _actionState = Pump::STATE_ACTIVE;
 }
 
 void Pump::EnableFor(long period)
@@ -42,35 +39,36 @@ void Pump::EnableFor(long period)
     _OnTime = period * 1000;
     _previousMillis = millis();
     Enable();
+    _actionState = Pump::STATE_TIMER;
   }
 }
 
 void Pump::Disable()
 {
-  if (_actionState == Pump::STATE_ACTIVE)
-  {
-    _pumpState = OFF;
-    digitalWrite(_pumpPin, _pumpState);
-    _actionState = Pump::STATE_IDLE;
-  }
+  _pumpState = OFF;
+  digitalWrite(_pumpPin, _pumpState);
+  _actionState = Pump::STATE_IDLE;
 }
 
 void Pump::Update()
 {
-  // check to see if it's time to change the state of the Pump
-  unsigned long currentMillis = millis();
-  if ((currentMillis - _previousMillis) >= _OnTime)
+  if (_actionState == Pump::STATE_TIMER)
   {
-    if (_actionState == Pump::STATE_FORCESTOP)
+    // check to see if it's time to change the state of the Pump
+    unsigned long currentMillis = millis();
+    if ((currentMillis - _previousMillis) >= _OnTime)
     {
-      // do force action
-    }
-    else
-    {
-      if (_actionState == Pump::STATE_ACTIVE)
+      if (_actionState == Pump::STATE_FORCESTOP)
       {
-        // time is up, time to change state
-        Disable();
+        // do force action
+      }
+      else
+      {
+        if (_actionState == Pump::STATE_ACTIVE)
+        {
+          // time is up, time to change state
+          Disable();
+        }
       }
     }
   }

@@ -13,16 +13,16 @@ System::System(int offPin, int idlePin, int pumpingPin, int consumePin)
   _pumpingPin = pumpingPin;
   _consumePin = consumePin;
 
-  pinMode(_offPin, OUTPUT);
+  /*pinMode(_offPin, OUTPUT);
   pinMode(_idlePin, OUTPUT);
   pinMode(_pumpingPin, OUTPUT);
-  pinMode(_consumePin, OUTPUT);
+  pinMode(_consumePin, OUTPUT);*/
 }
 
 void System::SetState(int state)
 {
   _systemState = state;
-  digitalWrite(_offPin, LOW);
+  /*digitalWrite(_offPin, LOW);
   digitalWrite(_idlePin, LOW);
   digitalWrite(_pumpingPin, LOW);
   digitalWrite(_consumePin, LOW);
@@ -41,7 +41,7 @@ void System::SetState(int state)
   else if(_systemState == System::CONSUME)
   {
     digitalWrite(_consumePin, HIGH);
-  }
+  }*/
 }
 
 int System::GetState()

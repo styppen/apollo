@@ -8,6 +8,7 @@ class Flow
   public:
     //constructor
     Flow(int flowPin, int flowLedPin);
+    Flow(int flowPin);
 
     //member functions
     void Sample();

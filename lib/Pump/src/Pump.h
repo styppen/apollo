@@ -16,6 +16,7 @@ class Pump
     static const int STATE_IDLE = 0;
     static const int STATE_ACTIVE = 1;
     static const int STATE_FORCESTOP = 2;
+    static const int STATE_TIMER = 3;
 
     // constructor
     Pump(int pumpPin);

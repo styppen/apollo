@@ -10,6 +10,14 @@ Flow::Flow(int flowPin, int flowLedPin)
   _cloopTime = _currentTime;
 }
 
+Flow::Flow(int flowPin)
+{
+  _flowPin = flowPin;
+  digitalWrite(_flowPin, HIGH);
+  _currentTime = millis();
+  _cloopTime = _currentTime;
+}
+
 void Flow::Sample()
 {
   _flowFrequency++;
@@ -23,14 +31,6 @@ void Flow::Update()
     _cloopTime = _currentTime;
     _flowRate = (_flowFrequency * 60 / 7.5);
     _flowFrequency = 0;
-    if(isFlowing())
-    {
-        digitalWrite(_flowLedPin, HIGH);
-    }
-    else
-    {
-      digitalWrite(_flowLedPin, LOW);
-    }
   }
 }
 
