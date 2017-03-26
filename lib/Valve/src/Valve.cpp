@@ -6,17 +6,18 @@
 #include <Arduino.h>
 #include <Valve.h>
 
-#define OFF LOW
-#define ON HIGH
+#define OFF HIGH
+#define ON LOW
 
 Valve::Valve(int pin)
 {
   pinMode(pin, OUTPUT);
   _valvePin = pin;
 
-	_valveState = LOW;
+	_valveState = OFF;
   _actionState = Valve::STATE_IDLE;
 	_previousMillis = 0;
+  digitalWrite(_valvePin, OFF);
 }
 
 void Valve::Update()
@@ -27,7 +28,7 @@ void Valve::Update()
   {
     if (_actionState == Valve::STATE_FORCESTOP)
     {
-      digitalWrite(_valvePin, LOW);
+      digitalWrite(_valvePin, OFF);
       _actionState = Valve::STATE_IDLE;
     }
     else
@@ -47,10 +48,20 @@ void Valve::TurnOnFor(long period)
   if (_actionState != Valve::STATE_ACTIVE)
   {
     _valveState = ON;
-    digitalWrite(_valvePin, HIGH);
+    digitalWrite(_valvePin, ON);
     _actionState = Valve::STATE_ACTIVE;
     _OnTime = period * 1000; // convert to milliseconds
     _previousMillis = millis();
+  }
+}
+
+void Valve::TurnOff()
+{
+  if (_actionState == Valve::STATE_ACTIVE)
+  {
+    _valveState = OFF;
+    digitalWrite(_valvePin, OFF);
+    _actionState = Valve::STATE_IDLE;
   }
 }
 

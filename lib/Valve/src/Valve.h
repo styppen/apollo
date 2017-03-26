@@ -20,6 +20,7 @@ class Valve
     // member functions
     void Update();
     void TurnOnFor(long period);
+    void TurnOff();
     void Toggle();
     void ForceStop();
 
@@ -30,7 +31,7 @@ class Valve
 
   private:
     int _valvePin;
-    long _OnTime;
+    unsigned long _OnTime;
     long _OffTime;
 
     int _valveState;
