@@ -15,14 +15,24 @@
 #define TIME_T 15
 
 // data wire is plugged into port 2
-#define ONE_WIRE_BUS 3
+#define ONE_WIRE_BUS 4
 
 // device configuration
-const int pinF1 = 2;
+const int disp  = 2;
+const int pinF1 = 3;
 const int pinV1 = 5;
 const int pinV2 = 6;
 const int pinV3 = 7;
 const int pinP1 = 8;
+
+const int MODE_TEMP = 0;
+const int MODE_CONSUME = 1;
+
+volatile int CONSUME_STATUS = -1;
+
+int DISPLAY_MODE = MODE_CONSUME;
+boolean dispChange = false;
+boolean testFlow = false;
 
 // valve control objects
 Valve v1(pinV1, Valve::TYPE_NO);
@@ -52,6 +62,24 @@ void flow () // Interrupt function
    f1.Sample();
 }
 
+void flowTest()
+{
+  testFlow = !testFlow;
+}
+
+void display()
+{
+  dispChange = true;
+}
+
+void reset()
+{
+  v1.Disengage();
+  v2.Disengage();
+  v3.Disengage();
+  p1.Disable();
+}
+
 void transitToState(int futureState)
 {
 
@@ -61,47 +89,52 @@ void transitToState(int futureState)
     // we don't want to do anything if current and future states are the same
     return;
   }
+  else
+  {
+    // transition into a new state
+    reset();
+  }
 
   /**** READY --> PUMPING ****/
   if (sys.GetState() == System::READY && futureState == System::PUMPING)
   {
-    // TODO
     Serial.println("READY -> PUMPING");
+    p1.Enable();
   }
 
   /**** READY -> CONSUME ****/
   else if (sys.GetState() == System::READY && futureState == System::CONSUME)
   {
-    // TODO
     Serial.println("READY -> CONSUME");
   }
 
   /**** PUMPING -> READY ****/
   else if (sys.GetState() == System::PUMPING && futureState == System::READY)
   {
-    //TODO
     Serial.println("PUMPING -> READY");
+    p1.Disable();
   }
 
   /**** PUMPING -> CONSUME ****/
   else if (sys.GetState() == System::PUMPING && futureState == System::CONSUME)
   {
-    //TODO
     Serial.println("PUMPING -> CONSUME");
+    p1.Disable();
   }
 
   /**** CONSUME -> READY ****/
   else if (sys.GetState() == System::CONSUME && futureState == System::READY)
   {
-    // TODO
     Serial.println("CONSUME -> READY");
+    reset();
   }
 
   /**** CONSUME -> PUMPING ****/
   else if (sys.GetState() == System::CONSUME && futureState == System::PUMPING)
   {
-    // TODO
     Serial.println("CONSUME -> PUMPING");
+    reset();
+    p1.Enable();
   }
 
   sys.SetState(futureState);
@@ -116,7 +149,8 @@ void setup()
 	sensors.setResolution(Probe05, 10);
   sensors.setResolution(Probe04, 10);
 
-	attachInterrupt(0, flow, RISING);
+	attachInterrupt(0, display, FALLING);
+  attachInterrupt(1, flowTest, FALLING);
   sei();
 
   lcd.begin(20, 4);
@@ -143,10 +177,50 @@ void loop()
 	int flowRate = f1.GetFlowRate();
 
 	// ******* 3. process the sensor values and act accordingly *******
-	if (flowRate > 0)
+	if (flowRate > 0 || testFlow)
 	{
 		// State::CONSUME mode has a higher priority and must therefore be handled first
 		transitToState(System::CONSUME);
+    int previousState = CONSUME_STATUS;
+
+    // determine what do we have to do next
+    if (temp2 > 28)
+    {
+      if(temp3 > 27)
+      {
+        CONSUME_STATUS = 3;
+      }
+      else
+      {
+        CONSUME_STATUS = 2;
+      }
+    }
+    else
+    {
+      CONSUME_STATUS = 1;
+    }
+
+    // handle before transitioning to new state
+    if (previousState != CONSUME_STATUS)
+    {
+      reset();
+    }
+
+    if (CONSUME_STATUS == 1)
+    {
+      v2.Close();
+    }
+    else if(CONSUME_STATUS == 2)
+    {
+      v2.Close();
+      v3.Open();
+      p1.Enable();
+    }
+    else if (CONSUME_STATUS == 3)
+    {
+      v1.Close();
+    }
+
 	}
 	else
 	{
@@ -165,41 +239,78 @@ void loop()
   p1.Update();
 
   // NOTE: Cursor Position: Lines and Characters start at 0
-  lcd.setCursor(0, 0);
-  lcd.print("Status: ");
-  lcd.setCursor(8, 0);
-
-  if (sys.GetState() == System::READY)
+  if (dispChange)
   {
-      lcd.print("PRIPRAVLJEN");
-  }
-  else if (sys.GetState() == System::CONSUME)
-  {
-    lcd.print("PORABA     ");
-  }
-  else if(sys.GetState() == System::PUMPING)
-  {
-    lcd.print("CRPANJE    ");
+    DISPLAY_MODE = (++DISPLAY_MODE)%2;
+    lcd.clear();
+    dispChange = !dispChange;
   }
 
-  lcd.setCursor(0,1); //Start at character 4 on line 0
-  lcd.print("T1=");
-  lcd.setCursor(3,1);
-  lcd.print(temp1);
-  lcd.setCursor(9,1);
-  lcd.print("C");
 
-  lcd.setCursor(0,2); //Start at character 4 on line 0
-  lcd.print("T2=");
-  lcd.setCursor(3,2);
-  lcd.print(temp2);
-  lcd.setCursor(9,2);
-  lcd.print("C");
+  if (DISPLAY_MODE == MODE_TEMP)
+  {
+    lcd.setCursor(0, 0);
+    lcd.print("Status: ");
+    lcd.setCursor(8, 0);
 
-  lcd.setCursor(0,3); //Start at character 4 on line 0
-  lcd.print("T3=");
-  lcd.setCursor(3,3);
-  lcd.print(temp3);
-  lcd.setCursor(9,3);
-  lcd.print("C");
+    if (sys.GetState() == System::READY)
+    {
+        lcd.print("PRIPRAVLJEN");
+    }
+    else if (sys.GetState() == System::CONSUME)
+    {
+      lcd.print("PORABA     ");
+    }
+    else if(sys.GetState() == System::PUMPING)
+    {
+      lcd.print("CRPANJE    ");
+    }
+
+    lcd.setCursor(0,1); //Start at character 4 on line 0
+    lcd.print("T1=");
+    lcd.setCursor(3,1);
+    lcd.print(temp1);
+    lcd.setCursor(9,1);
+    lcd.print("C");
+
+    lcd.setCursor(0,2); //Start at character 4 on line 0
+    lcd.print("T2=");
+    lcd.setCursor(3,2);
+    lcd.print(temp2);
+    lcd.setCursor(9,2);
+    lcd.print("C");
+
+    lcd.setCursor(0,3); //Start at character 4 on line 0
+    lcd.print("T3=");
+    lcd.setCursor(3,3);
+    lcd.print(temp3);
+    lcd.setCursor(9,3);
+    lcd.print("C");
+  }
+  else if (DISPLAY_MODE == MODE_CONSUME)
+  {
+    lcd.setCursor(0, 0);
+    lcd.print("V1=");
+    lcd.setCursor(3, 0);
+    lcd.print(v1.GetState()); // TODO
+
+    lcd.setCursor(0, 1);
+    lcd.print("V2=");
+    lcd.setCursor(3, 1);
+    lcd.print(v2.GetState()); // TODO
+
+    lcd.setCursor(0, 2);
+    lcd.print("V3=");
+    lcd.setCursor(3, 2);
+    lcd.print(v3.GetState()); // TODO
+
+    lcd.setCursor(0, 3);
+    lcd.print("P1=");
+    lcd.setCursor(3, 3);
+    lcd.print(p1.GetState()); // TODO
+
+    lcd.setCursor(19, 0);
+    lcd.print(CONSUME_STATUS);
+
+  }
 }

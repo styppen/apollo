@@ -26,6 +26,7 @@ class Pump
     void EnableFor(long period);
     void Enable();
     void Disable();
+    String GetState();
     //void ForceStop();
 
   private:

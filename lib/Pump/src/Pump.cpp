@@ -73,3 +73,8 @@ void Pump::Update()
     }
   }
 }
+
+String Pump::GetState()
+{
+  return _pumpState == ON ? "ON" : "OFF";
+}

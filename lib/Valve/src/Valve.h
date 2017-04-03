@@ -30,6 +30,7 @@ class Valve
     void Close();
     void Engage();
     void Disengage();
+    String GetState();
 
   private:
     int _valvePin;

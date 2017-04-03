@@ -65,3 +65,8 @@ void Valve::Disengage()
   _actionState = Valve::STATE_IDLE;
   digitalWrite(_valvePin, _valveState);
 }
+
+String Valve::GetState()
+{
+  return _valveState == _open ? "OPEN" : "CLOSED";
+}
