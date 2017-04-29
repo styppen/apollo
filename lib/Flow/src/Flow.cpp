@@ -26,7 +26,7 @@ void Flow::Sample()
 void Flow::Update()
 {
   _currentTime = millis();
-  if(_currentTime >= (_cloopTime + 1000))
+  if(_currentTime >= (_cloopTime + 1500))
   {
     _cloopTime = _currentTime;
     _flowRate = (_flowFrequency * 60 / 7.5);

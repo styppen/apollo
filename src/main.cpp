@@ -14,25 +14,34 @@
 // time constants
 #define TIME_T 15
 
-// data wire is plugged into port 2
+// data wire is plugged into port 4
 #define ONE_WIRE_BUS 4
+
+// tolerances for begin/end pumping
+#define PUMP_BEGIN_TOLERANCE 1
+#define PUMP_END_TOLERANCE 0
+
+// consume status transitions thresholds
+#define CONSUME_FROM_TOP  40
+#define CONSUME_FROM_PIPE 35
 
 // device configuration
 const int disp  = 2;
 const int pinF1 = 3;
 const int pinV1 = 5;
 const int pinV2 = 6;
-const int pinV3 = 7;
-const int pinP1 = 8;
+const int pinV3 = 8;
+const int pinP1 = 7;
 
 const int MODE_TEMP = 0;
 const int MODE_CONSUME = 1;
 
 volatile int CONSUME_STATUS = -1;
 
-int DISPLAY_MODE = MODE_CONSUME;
+int DISPLAY_MODE = MODE_TEMP;
 boolean dispChange = false;
 boolean testFlow = false;
+int cnt = 0;
 
 // valve control objects
 Valve v1(pinV1, Valve::TYPE_NO);
@@ -49,8 +58,10 @@ Flow f1(pinF1);
 Pump p1(pinP1);
 
 DeviceAddress Probe01 = { 0x28, 0xFF, 0x99, 0xC7, 0x64, 0x15, 0x02, 0x27 };
-DeviceAddress Probe05 = { 0x28, 0xFF, 0xD2, 0xAC, 0x64, 0x15, 0x01, 0x58 };
+DeviceAddress Probe02 = { 0x28, 0xFF, 0xF9, 0xA7, 0x64, 0x15, 0x01, 0x44 };
+DeviceAddress Probe03 = { 0x28, 0xFF, 0x9E, 0xAF, 0x64, 0x15, 0x01, 0x18 };
 DeviceAddress Probe04 = { 0x28, 0xFF, 0x22, 0xD0, 0x64, 0x15, 0x01, 0x44 };
+DeviceAddress Probe05 = { 0x28, 0xFF, 0xD2, 0xAC, 0x64, 0x15, 0x01, 0x58 };
 
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
@@ -150,7 +161,7 @@ void setup()
   sensors.setResolution(Probe04, 10);
 
 	attachInterrupt(0, display, FALLING);
-  attachInterrupt(1, flowTest, FALLING);
+  attachInterrupt(1, flow, FALLING);
   sei();
 
   lcd.begin(20, 4);
@@ -171,22 +182,23 @@ void loop()
 	f1.Update();
 
 	// ******* 2. read values from sensors *******
-	float temp1 = sensors.getTempC(Probe05);
-  float temp2 = sensors.getTempC(Probe04);
-  float temp3 = sensors.getTempC(Probe01);
+	float temp1 = sensors.getTempC(Probe03);
+  float temp2 = sensors.getTempC(Probe02);
+  float temp3 = sensors.getTempC(Probe04);
+  temp1 = 21.00;
 	int flowRate = f1.GetFlowRate();
 
 	// ******* 3. process the sensor values and act accordingly *******
-	if (flowRate > 0 || testFlow)
+	if (flowRate > 0)
 	{
 		// State::CONSUME mode has a higher priority and must therefore be handled first
 		transitToState(System::CONSUME);
     int previousState = CONSUME_STATUS;
 
     // determine what do we have to do next
-    if (temp2 > 28)
+    if (temp2 > CONSUME_FROM_TOP)
     {
-      if(temp3 > 27)
+      if(temp3 >= CONSUME_FROM_PIPE)
       {
         CONSUME_STATUS = 3;
       }
@@ -220,23 +232,33 @@ void loop()
     {
       v1.Close();
     }
-
 	}
 	else
 	{
-		if (temp1 >= 28)
-		{
-      //temperature difference is high than threshold, we initiate pumping
-			transitToState(System::PUMPING);
-		}
-		else
-		{
-			transitToState(System::READY);
-			sys.SetState(System::READY);
-		}
-	}
+    // no flow is detected
+    float tempDiff = temp2 - temp1; // TODO absolute values
 
-  p1.Update();
+    if (tempDiff <= PUMP_END_TOLERANCE ||  tempDiff >= PUMP_BEGIN_TOLERANCE)
+    {
+      if (sys.GetState() == System::PUMPING && tempDiff <= PUMP_END_TOLERANCE && tempDiff > 0)
+      {
+        transitToState(System::READY);
+      }
+      else if (sys.GetState() == System::READY && tempDiff >= PUMP_BEGIN_TOLERANCE)
+      {
+        transitToState(System::PUMPING);
+      }
+      else
+      {
+        // TODO write something meaningful
+        transitToState(System::READY);
+      }
+    }
+    else
+    {
+      transitToState(System::READY);
+    }
+	}
 
   // NOTE: Cursor Position: Lines and Characters start at 0
   if (dispChange)
@@ -267,24 +289,24 @@ void loop()
     }
 
     lcd.setCursor(0,1); //Start at character 4 on line 0
-    lcd.print("T1=");
-    lcd.setCursor(3,1);
+    lcd.print("SPODAJ=");
+    lcd.setCursor(8,1);
     lcd.print(temp1);
-    lcd.setCursor(9,1);
+    lcd.setCursor(13,1);
     lcd.print("C");
 
     lcd.setCursor(0,2); //Start at character 4 on line 0
-    lcd.print("T2=");
-    lcd.setCursor(3,2);
+    lcd.print("ZGORAJ=");
+    lcd.setCursor(8,2);
     lcd.print(temp2);
-    lcd.setCursor(9,2);
+    lcd.setCursor(13,2);
     lcd.print("C");
 
     lcd.setCursor(0,3); //Start at character 4 on line 0
-    lcd.print("T3=");
-    lcd.setCursor(3,3);
+    lcd.print("   CEV=");
+    lcd.setCursor(8,3);
     lcd.print(temp3);
-    lcd.setCursor(9,3);
+    lcd.setCursor(13,3);
     lcd.print("C");
   }
   else if (DISPLAY_MODE == MODE_CONSUME)
