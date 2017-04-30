@@ -353,8 +353,6 @@ void loop()
     lcd.setCursor(13,3);
     lcd.print("C");
 
-    lcd.setCursor(15, 3);
-    lcd.print(pulseRate);
   }
   else if (DISPLAY_MODE == MODE_CONSUME)
   {
