@@ -36,6 +36,8 @@ const int pinP1 = 7;
 const int MODE_TEMP = 0;
 const int MODE_CONSUME = 1;
 
+const int FLOW_SAMPLE_RATE = 3000;
+
 volatile int CONSUME_STATUS = -1;
 
 int DISPLAY_MODE = MODE_TEMP;
@@ -52,7 +54,7 @@ Valve v3(pinV3, Valve::TYPE_NC);
 System sys(0,0,0,0);
 
 // flow control object
-Flow f1(pinF1);
+Flow f1(pinF1, FLOW_SAMPLE_RATE);
 
 // pump control object
 Pump p1(pinP1);
@@ -67,6 +69,53 @@ OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);  // Set the LCD I2C address
+
+// count how many pulses!
+volatile uint16_t pulses = 0;
+// track the state of the pulse pin
+volatile uint8_t lastflowpinstate;
+// you can try to keep time of how long it is between pulses
+volatile uint32_t lastflowratetimer = 0;
+// and use that to calculate a flow rate
+volatile float flowrate;
+// Interrupt is called once a millisecond, looks for any pulses from the sensor!
+SIGNAL(TIMER0_COMPA_vect)
+{
+  uint8_t x = digitalRead(pinF1);
+  if (x == lastflowpinstate)
+  {
+    lastflowratetimer++;
+    return; // nothing changed!
+  }
+
+  if (x == HIGH)
+  {
+    //low to high transition!
+    pulses++;
+    f1.Sample();
+  }
+
+  lastflowpinstate = x;
+  flowrate = 1000.0;
+  flowrate /= lastflowratetimer;  // in hertz
+  lastflowratetimer = 0;
+}
+
+void useInterrupt(boolean v)
+{
+  if (v)
+  {
+    // Timer0 is already used for millis() - we'll just interrupt somewhere
+    // in the middle and call the "Compare A" function above
+    OCR0A = 0xAF;
+    TIMSK0 |= _BV(OCIE0A);
+  }
+  else
+  {
+    // do not call the interrupt function COMPA anymore
+    TIMSK0 &= ~_BV(OCIE0A);
+  }
+}
 
 void flow () // Interrupt function
 {
@@ -160,9 +209,11 @@ void setup()
 	sensors.setResolution(Probe05, 10);
   sensors.setResolution(Probe04, 10);
 
-	attachInterrupt(0, display, FALLING);
-  attachInterrupt(1, flow, FALLING);
-  sei();
+  pinMode(disp, INPUT);
+  pinMode(pinF1, INPUT);
+  digitalWrite(pinF1, HIGH);
+  lastflowpinstate = digitalRead(pinF1);
+  useInterrupt(true);
 
   lcd.begin(20, 4);
   for(int i = 0; i < 3; i++)
@@ -185,11 +236,17 @@ void loop()
 	float temp1 = sensors.getTempC(Probe03);
   float temp2 = sensors.getTempC(Probe02);
   float temp3 = sensors.getTempC(Probe04);
-  temp1 = 21.00;
-	int flowRate = f1.GetFlowRate();
+	int pulseRate = f1.GetPulseRate();
+
+  // read the button state
+  int buttonState = digitalRead(disp);
+  if (buttonState == HIGH)
+  {
+    display();
+  }
 
 	// ******* 3. process the sensor values and act accordingly *******
-	if (flowRate > 0)
+  if (pulseRate > 50)
 	{
 		// State::CONSUME mode has a higher priority and must therefore be handled first
 		transitToState(System::CONSUME);
@@ -236,23 +293,10 @@ void loop()
 	else
 	{
     // no flow is detected
-    float tempDiff = temp2 - temp1; // TODO absolute values
-
-    if (tempDiff <= PUMP_END_TOLERANCE ||  tempDiff >= PUMP_BEGIN_TOLERANCE)
+    float tempDiff = temp2 - temp1;
+    if (tempDiff >= PUMP_BEGIN_TOLERANCE)
     {
-      if (sys.GetState() == System::PUMPING && tempDiff <= PUMP_END_TOLERANCE && tempDiff > 0)
-      {
-        transitToState(System::READY);
-      }
-      else if (sys.GetState() == System::READY && tempDiff >= PUMP_BEGIN_TOLERANCE)
-      {
-        transitToState(System::PUMPING);
-      }
-      else
-      {
-        // TODO write something meaningful
-        transitToState(System::READY);
-      }
+      transitToState(System::PUMPING);
     }
     else
     {
@@ -308,28 +352,31 @@ void loop()
     lcd.print(temp3);
     lcd.setCursor(13,3);
     lcd.print("C");
+
+    lcd.setCursor(15, 3);
+    lcd.print(pulseRate);
   }
   else if (DISPLAY_MODE == MODE_CONSUME)
   {
     lcd.setCursor(0, 0);
     lcd.print("V1=");
     lcd.setCursor(3, 0);
-    lcd.print(v1.GetState()); // TODO
+    lcd.print(v1.GetState());
 
     lcd.setCursor(0, 1);
     lcd.print("V2=");
     lcd.setCursor(3, 1);
-    lcd.print(v2.GetState()); // TODO
+    lcd.print(v2.GetState());
 
     lcd.setCursor(0, 2);
     lcd.print("V3=");
     lcd.setCursor(3, 2);
-    lcd.print(v3.GetState()); // TODO
+    lcd.print(v3.GetState());
 
     lcd.setCursor(0, 3);
     lcd.print("P1=");
     lcd.setCursor(3, 3);
-    lcd.print(p1.GetState()); // TODO
+    lcd.print(p1.GetState());
 
     lcd.setCursor(19, 0);
     lcd.print(CONSUME_STATUS);
