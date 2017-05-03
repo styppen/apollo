@@ -7,20 +7,20 @@ class Flow
 {
   public:
     //constructor
-    Flow(int flowPin, int flowLedPin);
-    Flow(int flowPin);
+    Flow(int flowPin, int sampleRate);
 
     //member functions
     void Sample();
     void Update();
     boolean isFlowing();
-    int GetFlowRate();
+    int GetPulseRate();
 
   private:
     int _flowPin;
     int _flowLedPin;
+    int _sampleRate;
     volatile int _flowFrequency; // Measures flow sensor pulses
-    unsigned int _flowRate; // Calculated litres/hour
+    unsigned int _pulseRate; // Calculated pulse/sampleRate
     unsigned long _currentTime;
     unsigned long _cloopTime;
 

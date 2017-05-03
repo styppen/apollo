@@ -68,5 +68,5 @@ void Valve::Disengage()
 
 String Valve::GetState()
 {
-  return _valveState == _open ? "OPEN" : "CLOSED";
+  return _valveState == _open ? "ODPRT" : "ZAPRT";
 }

@@ -1,21 +1,13 @@
 #include <Arduino.h>
 #include <Flow.h>
 
-Flow::Flow(int flowPin, int flowLedPin)
-{
-  _flowPin = flowPin;
-  _flowLedPin = flowLedPin;
-  digitalWrite(_flowPin, HIGH);
-  _currentTime = millis();
-  _cloopTime = _currentTime;
-}
-
-Flow::Flow(int flowPin)
+Flow::Flow(int flowPin, int sampleRate)
 {
   _flowPin = flowPin;
   digitalWrite(_flowPin, HIGH);
   _currentTime = millis();
   _cloopTime = _currentTime;
+  _sampleRate = sampleRate;
 }
 
 void Flow::Sample()
@@ -26,20 +18,20 @@ void Flow::Sample()
 void Flow::Update()
 {
   _currentTime = millis();
-  if(_currentTime >= (_cloopTime + 1000))
+  if(_currentTime >= (_cloopTime + _sampleRate))
   {
     _cloopTime = _currentTime;
-    _flowRate = (_flowFrequency * 60 / 7.5);
+    _pulseRate = _flowFrequency; // Pulses per second  (_flowFrequency * 60 / 7.5);
     _flowFrequency = 0;
   }
 }
 
 boolean Flow::isFlowing()
 {
-  return _flowRate > 0;
+  return _pulseRate > 0;
 }
 
-int Flow::GetFlowRate()
+int Flow::GetPulseRate()
 {
-  return _flowRate;
+  return _pulseRate;
 }

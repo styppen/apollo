@@ -76,5 +76,5 @@ void Pump::Update()
 
 String Pump::GetState()
 {
-  return _pumpState == ON ? "ON" : "OFF";
+  return _pumpState == ON ? "VKLOPLJENA " : "IZKLOPLJENA";
 }
