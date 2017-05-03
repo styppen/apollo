@@ -25,4 +25,4 @@ The system consists of the following components:
 * 220V water pump
 
 ## Schematics
-![Alt text](http://imgur.com/VkQkoCE, "Schematic")
+![Alt text](http://imgur.com/VkQkoCE.png, "Schematic")
