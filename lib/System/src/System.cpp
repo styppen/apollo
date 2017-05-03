@@ -12,6 +12,7 @@ System::System(int offPin, int idlePin, int pumpingPin, int consumePin)
   _idlePin = idlePin;
   _pumpingPin = pumpingPin;
   _consumePin = consumePin;
+  SetState(System::READY);
 
   /*pinMode(_offPin, OUTPUT);
   pinMode(_idlePin, OUTPUT);
