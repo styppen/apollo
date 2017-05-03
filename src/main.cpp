@@ -8,15 +8,6 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
-// threshold temperatures
-#define TEMP_X 3
-
-// time constants
-#define TIME_T 15
-
-// data wire is plugged into port 4
-#define ONE_WIRE_BUS 4
-
 // tolerances for begin/end pumping
 #define PUMP_BEGIN_TOLERANCE 1
 #define PUMP_END_TOLERANCE 0
@@ -28,6 +19,7 @@
 // device configuration
 const int disp  = 2;
 const int pinF1 = 3;
+const int oneWireBus = 4;
 const int pinV1 = 5;
 const int pinV2 = 6;
 const int pinV3 = 8;
@@ -38,12 +30,13 @@ const int MODE_CONSUME = 1;
 
 const int FLOW_SAMPLE_RATE = 3000;
 
+const unsigned long lcdRefreshRate = 60; // seconds
+
 volatile int CONSUME_STATUS = -1;
 
 int DISPLAY_MODE = MODE_TEMP;
 boolean dispChange = false;
 boolean testFlow = false;
-int cnt = 0;
 
 // valve control objects
 Valve v1(pinV1, Valve::TYPE_NO);
@@ -65,10 +58,11 @@ DeviceAddress Probe03 = { 0x28, 0xFF, 0x9E, 0xAF, 0x64, 0x15, 0x01, 0x18 };
 DeviceAddress Probe04 = { 0x28, 0xFF, 0x22, 0xD0, 0x64, 0x15, 0x01, 0x44 };
 DeviceAddress Probe05 = { 0x28, 0xFF, 0xD2, 0xAC, 0x64, 0x15, 0x01, 0x58 };
 
-OneWire oneWire(ONE_WIRE_BUS);
+OneWire oneWire(oneWireBus);
 DallasTemperature sensors(&oneWire);
 
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);  // Set the LCD I2C address
+unsigned long lcdLastInit = 0;
 
 // count how many pulses!
 volatile uint16_t pulses = 0;
@@ -245,6 +239,14 @@ void loop()
     display();
   }
 
+  // check if we need to reinit the LCD display
+  if((millis() - lcdLastInit) > (lcdRefreshRate * 1000))
+  {
+    lcd.begin(20, 4);
+    lcdLastInit = millis();
+    Serial.println("Screen was reinitialised!");
+  }
+
 	// ******* 3. process the sensor values and act accordingly *******
   if (pulseRate > 50)
 	{
@@ -307,7 +309,8 @@ void loop()
   // NOTE: Cursor Position: Lines and Characters start at 0
   if (dispChange)
   {
-    DISPLAY_MODE = (++DISPLAY_MODE)%2;
+    DISPLAY_MODE++;
+    DISPLAY_MODE = DISPLAY_MODE%2;
     lcd.clear();
     dispChange = !dispChange;
   }
@@ -378,6 +381,9 @@ void loop()
 
     lcd.setCursor(19, 0);
     lcd.print(CONSUME_STATUS);
+
+    lcd.setCursor(0, 2);
+    lcd.print("V");
 
   }
 }
