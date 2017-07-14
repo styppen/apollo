@@ -23,6 +23,7 @@ class System
     static const int READY = 1;
     static const int PUMPING = 2;
     static const int CONSUME = 3;
+    static const int MANUAL = 4;
 
   private:
     int _systemState;

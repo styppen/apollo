@@ -28,6 +28,8 @@ const int MODE_TEMP = 0;
 const int MODE_CONSUME = 1;
 
 const int FLOW_SAMPLE_RATE = 3000;
+const unsigned long TEMP_SAMPLE_RATE = 120; // seconds
+volatile long lastTempCheck = 0;
 
 const unsigned long lcdRefreshRate = 60; // seconds
 
@@ -161,6 +163,20 @@ void transitToState(int futureState)
     Serial.println("READY -> CONSUME");
   }
 
+  /**** READY -> MANUAL ****/
+  else if (sys.GetState() == System::READY && futureState == System::MANUAL)
+  {
+    Serial.println("READY -> MANUAL");
+    v1.Engage();
+  }
+
+  /**** MANUAL -> READY ****/
+  else if (sys.GetState() == System::MANUAL && futureState == System::READY)
+  {
+    Serial.println("MANUAL -> READY");
+    v1.Disengage();
+  }
+
   /**** PUMPING -> READY ****/
   else if (sys.GetState() == System::PUMPING && futureState == System::READY)
   {
@@ -226,9 +242,15 @@ void loop()
 	f1.Update();
 
 	// ******* 2. read values from sensors *******
-	float temp1 = sensors.getTempC(Probe03);
-  float temp2 = sensors.getTempC(Probe02);
-  float temp3 = sensors.getTempC(Probe04);
+  float temp1, temp2, temp3;
+  if((millis() - lastTempCheck) > (TEMP_SAMPLE_RATE * 1000))
+  {
+    // we pool the temp sensors every TEMP_SAMPLE_RATE seconds to avoid sensor flickering
+    // this is done in order to compensate for the sensors to stabilise on their readings
+    temp1 = sensors.getTempC(Probe03);
+    temp2 = sensors.getTempC(Probe02);
+    temp3 = sensors.getTempC(Probe04);
+  }
 	int pulseRate = f1.GetPulseRate();
 
   // read the button state
@@ -247,7 +269,21 @@ void loop()
   }
 
 	// ******* 3. process the sensor values and act accordingly *******
-  if (pulseRate > 50)
+  if (dispChange)
+  {
+    if(sys.GetState() == System::MANUAL)
+    {
+      transitToState(System::READY);
+    }
+    else
+    {
+      // going to MANUAL is only possible from READY state
+      transitToState(System::READY);
+      transitToState(System::MANUAL);
+    }
+    dispChange = !dispChange;
+  }
+  else if (pulseRate > 50)
 	{
 		// State::CONSUME mode has a higher priority and must therefore be handled first
 		transitToState(System::CONSUME);
