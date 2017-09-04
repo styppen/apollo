@@ -37,6 +37,11 @@ int DISPLAY_MODE = MODE_TEMP;
 boolean dispChange = false;
 boolean testFlow = false;
 
+float temp1, temp2, temp3;
+const unsigned long TEMP_POLL_RATE = 30; //seconds
+unsigned long lastTempCheck = 30*1000;
+volatile boolean consumePlus = false;
+
 // valve control objects
 Valve v1(pinV1, Valve::TYPE_NO);
 Valve v2(pinV2, Valve::TYPE_NO);
@@ -123,6 +128,11 @@ void flowTest()
 void display()
 {
   dispChange = true;
+}
+
+void toggleConsumePlus()
+{
+  consumePlus = !consumePlus;
 }
 
 void reset()
@@ -226,16 +236,21 @@ void loop()
 	f1.Update();
 
 	// ******* 2. read values from sensors *******
-	float temp1 = sensors.getTempC(Probe03);
-  float temp2 = sensors.getTempC(Probe02);
-  float temp3 = sensors.getTempC(Probe04);
+  if ((millis() - lastTempCheck) > (TEMP_POLL_RATE * 1000))
+  {
+  	temp1 = sensors.getTempC(Probe03);
+    temp2 = sensors.getTempC(Probe02);
+    temp3 = sensors.getTempC(Probe04);
+    lastTempCheck = millis();
+  }
 	int pulseRate = f1.GetPulseRate();
 
   // read the button state
   int buttonState = digitalRead(disp);
   if (buttonState == HIGH)
   {
-    display();
+    //display();
+    toggleConsumePlus();
   }
 
   // check if we need to reinit the LCD display
@@ -254,7 +269,11 @@ void loop()
     int previousState = CONSUME_STATUS;
 
     // determine what do we have to do next
-    if (temp2 > CONSUME_FROM_TOP)
+    if (consumePlus)
+    {
+      CONSUME_STATUS = 4;
+    }
+    else if (temp2 > CONSUME_FROM_TOP)
     {
       if(temp3 >= CONSUME_FROM_PIPE)
       {
@@ -290,6 +309,10 @@ void loop()
     {
       v1.Close();
     }
+    else if (CONSUME_STATUS == 4)
+    {
+      v1.Engage();
+    }
 	}
 	else
 	{
@@ -306,13 +329,13 @@ void loop()
 	}
 
   // NOTE: Cursor Position: Lines and Characters start at 0
-  if (dispChange)
+  /*if (dispChange)
   {
     DISPLAY_MODE++;
     DISPLAY_MODE = DISPLAY_MODE%2;
     lcd.clear();
     dispChange = !dispChange;
-  }
+  }*/
 
 
   if (DISPLAY_MODE == MODE_TEMP)
@@ -354,6 +377,17 @@ void loop()
     lcd.print(temp3);
     lcd.setCursor(13,3);
     lcd.print("C");
+
+    if(consumePlus)
+    {
+      lcd.setCursor(19, 3);
+      lcd.print("+");
+    }
+    else
+    {
+      lcd.setCursor(19, 3);
+      lcd.print(" ");
+    }
 
   }
   else if (DISPLAY_MODE == MODE_CONSUME)
