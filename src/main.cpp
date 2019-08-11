@@ -27,7 +27,7 @@ const int pinP1 = 7;
 const int MODE_TEMP = 0;
 const int MODE_CONSUME = 1;
 
-const int FLOW_SAMPLE_RATE = 3000;
+const int FLOW_SAMPLE_RATE = 500;
 
 const unsigned long lcdRefreshRate = 60; // seconds
 
@@ -244,7 +244,7 @@ void loop()
     lastTempCheck = millis();
   }
 	int pulseRate = f1.GetPulseRate();
-
+  
   // read the button state
   int buttonState = digitalRead(disp);
   if (buttonState == HIGH)
@@ -262,7 +262,7 @@ void loop()
   }
 
 	// ******* 3. process the sensor values and act accordingly *******
-  if (pulseRate > 50)
+  if (pulseRate > 1)
 	{
 		// State::CONSUME mode has a higher priority and must therefore be handled first
 		transitToState(System::CONSUME);
